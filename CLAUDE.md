@@ -221,4 +221,4 @@ interface Message {
 - 修改完一批文件后务必运行 `npm run typecheck` 和 `pytest`
 - Webhook 本地联调使用 `ngrok` 或 `localtunnel` 暴露本地端口
 - 美洽 API 有限流，批量操作需加延迟
-- 参考文档：https://dev.meiqia.com/  （开发前先阅读）
+- 参考文档：https://www.meiqia.com/help/article-categories/development/（开发前先阅读）
