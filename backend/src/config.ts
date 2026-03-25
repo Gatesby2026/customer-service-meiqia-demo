@@ -1,5 +1,9 @@
-import 'dotenv/config'
+import { config as dotenvConfig } from 'dotenv'
+import { resolve } from 'path'
 import { z } from 'zod'
+
+// .env 在项目根目录（backend 的上级）
+dotenvConfig({ path: resolve(import.meta.dirname, '../../.env') })
 
 const envSchema = z.object({
   MEIQIA_APP_ID: z.string().min(1, 'MEIQIA_APP_ID is required'),
