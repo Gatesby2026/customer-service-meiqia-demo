@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Conversation } from './types/conversation'
 import { useConversationHistory } from './hooks/useConversationHistory'
+import { useMeiqiaSDK } from './hooks/useMeiqiaSDK'
 import ConversationFilter from './components/admin/ConversationHistory/ConversationFilter'
 import ConversationList from './components/admin/ConversationHistory/ConversationList'
 import ConversationDetail from './components/admin/ConversationHistory/ConversationDetail'
@@ -8,6 +9,7 @@ import ConversationDetail from './components/admin/ConversationHistory/Conversat
 export default function App() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
   const { conversations, loading, hasMore, loadMore, applyFilters } = useConversationHistory()
+  useMeiqiaSDK()
 
   // 默认加载最近 7 天已结束会话
   useEffect(() => {
