@@ -12,10 +12,10 @@ export function useMeiqiaSDK() {
 
     async function init() {
       try {
-        const res = await axios.get<{ token: string }>('/api/meiqia/client-token')
+        // 从后端获取 App Key（避免前端硬编码）
+        const res = await axios.get<{ appKey: string }>('/api/meiqia/app-key')
         if (cancelled) return
 
-        // 等待 SDK 脚本加载完成
         const waitForSDK = () =>
           new Promise<void>((resolve, reject) => {
             const maxWait = 5000
@@ -36,7 +36,7 @@ export function useMeiqiaSDK() {
         await waitForSDK()
         if (cancelled) return
 
-        _MEIQIA('init', { clientToken: res.data.token })
+        _MEIQIA('init', { appKey: res.data.appKey })
         _MEIQIA('showPanel')
         setStatus('ready')
       } catch (err) {

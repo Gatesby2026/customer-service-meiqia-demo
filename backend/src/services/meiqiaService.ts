@@ -1,53 +1,23 @@
 import { config } from '../config.js'
-import type { MeiqiaApiResponse, MeiqiaTokenData, MeiqiaConversation, MeiqiaMessage } from '../../../shared/types/meiqia.js'
+import type { MeiqiaConversation, MeiqiaMessage } from '../../../shared/types/meiqia.js'
 
-// Token 内存缓存
-let cachedToken: { value: string; expiresAt: number } | null = null
+const API_BASE = `${config.MEIQIA_API_HOST}/unified-api/datagateway/v1`
 
-async function getAccessToken(): Promise<string> {
-  if (cachedToken && Date.now() < cachedToken.expiresAt - 5 * 60 * 1000) {
-    return cachedToken.value
-  }
-
-  const res = await fetch(`${config.MEIQIA_API_HOST}/2.0/token`, {
+async function meiqiaPost<T>(path: string, body: Record<string, unknown> = {}): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      app_id: config.MEIQIA_APP_ID,
-      app_secret: config.MEIQIA_APP_SECRET,
-    }),
-  })
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch Meiqia token: ${res.status}`)
-  }
-
-  const json = (await res.json()) as MeiqiaApiResponse<MeiqiaTokenData>
-  cachedToken = {
-    value: json.data.token,
-    expiresAt: Date.now() + json.data.expires_in * 1000,
-  }
-
-  return cachedToken.value
-}
-
-async function meiqiaFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = await getAccessToken()
-  const res = await fetch(`${config.MEIQIA_API_HOST}${path}`, {
-    ...options,
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${config.MEIQIA_ACCESS_TOKEN}`,
       'Content-Type': 'application/json',
-      ...(options?.headers ?? {}),
     },
+    body: JSON.stringify(body),
   })
 
   if (!res.ok) {
     throw new Error(`Meiqia API error ${res.status}: ${path}`)
   }
 
-  const json = (await res.json()) as MeiqiaApiResponse<T>
-  return json.data
+  return res.json() as Promise<T>
 }
 
 export interface ListConversationsParams {
@@ -59,34 +29,36 @@ export interface ListConversationsParams {
   status?: 'open' | 'closed'
 }
 
-export async function listConversations(params: ListConversationsParams): Promise<{ conversations: MeiqiaConversation[]; total: number }> {
-  const query = new URLSearchParams()
-  if (params.page) query.set('page', String(params.page))
-  if (params.page_size) query.set('page_size', String(params.page_size))
-  if (params.start_time) query.set('start_time', String(params.start_time))
-  if (params.end_time) query.set('end_time', String(params.end_time))
-  if (params.agent_id) query.set('agent_id', params.agent_id)
-  if (params.status) query.set('status', params.status)
-
-  return meiqiaFetch(`/2.0/conversations?${query.toString()}`)
+export async function listConversations(
+  params: ListConversationsParams
+): Promise<{ conversations: MeiqiaConversation[]; total: number }> {
+  const offset = ((params.page ?? 1) - 1) * (params.page_size ?? 20)
+  return meiqiaPost('/conversations/list', {
+    offset,
+    limit: params.page_size ?? 20,
+    ...(params.start_time ? { start_time: params.start_time } : {}),
+    ...(params.end_time ? { end_time: params.end_time } : {}),
+    ...(params.agent_id ? { agent_id: params.agent_id } : {}),
+    ...(params.status ? { status: params.status } : {}),
+  })
 }
 
 export async function getConversation(id: string): Promise<MeiqiaConversation> {
-  return meiqiaFetch(`/2.0/conversation/${id}`)
+  return meiqiaPost(`/conversations/${id}`, {})
 }
 
 export async function getConversationMessages(
   id: string,
-  params: { page?: number; page_size?: number },
+  params: { page?: number; page_size?: number }
 ): Promise<{ messages: MeiqiaMessage[]; total: number }> {
-  const query = new URLSearchParams()
-  if (params.page) query.set('page', String(params.page))
-  if (params.page_size) query.set('page_size', String(params.page_size))
-
-  return meiqiaFetch(`/2.0/conversation/${id}/messages?${query.toString()}`)
+  const offset = ((params.page ?? 1) - 1) * (params.page_size ?? 20)
+  return meiqiaPost(`/conversations/${id}/messages`, {
+    offset,
+    limit: params.page_size ?? 20,
+  })
 }
 
-export async function getClientToken(): Promise<string> {
-  const data = await meiqiaFetch<{ token: string }>('/2.0/client/token', { method: 'POST' })
-  return data.token
+/** 返回 App Key，供前端 SDK 初始化使用 */
+export function getAppKey(): string {
+  return config.MEIQIA_APP_KEY
 }
