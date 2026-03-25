@@ -7,7 +7,7 @@ import ConversationDetail from './components/admin/ConversationHistory/Conversat
 
 export default function App() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
-  const { conversations, loading, hasMore, filters, loadMore, applyFilters } = useConversationHistory()
+  const { conversations, loading, hasMore, loadMore, applyFilters } = useConversationHistory()
 
   // 默认加载最近 7 天已结束会话
   useEffect(() => {
