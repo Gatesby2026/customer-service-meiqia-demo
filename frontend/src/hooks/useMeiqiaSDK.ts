@@ -12,32 +12,31 @@ export function useMeiqiaSDK() {
 
     async function init() {
       try {
-        // 从后端获取 App Key（避免前端硬编码）
+        // 1. 先创建 _MEIQIA 队列函数（必须在加载 SDK 脚本之前）
+        const w = window as Window & { _MEIQIA?: ((...args: unknown[]) => void) & { a?: unknown[][] } }
+        w._MEIQIA = w._MEIQIA ?? function (...args: unknown[]) {
+          ;(w._MEIQIA!.a = w._MEIQIA!.a ?? []).push(args)
+        }
+
+        // 2. 从后端获取 App Key
         const res = await axios.get<{ appKey: string }>('/api/meiqia/app-key')
         if (cancelled) return
 
-        const waitForSDK = () =>
-          new Promise<void>((resolve, reject) => {
-            const maxWait = 5000
-            const interval = 100
-            let elapsed = 0
-            const timer = setInterval(() => {
-              if (typeof _MEIQIA !== 'undefined') {
-                clearInterval(timer)
-                resolve()
-              } else if (elapsed >= maxWait) {
-                clearInterval(timer)
-                reject(new Error('Meiqia SDK load timeout'))
-              }
-              elapsed += interval
-            }, interval)
-          })
+        // 3. 设置 appid（加入队列，SDK 加载后自动执行）
+        w._MEIQIA('appid', res.data.appKey)
 
-        await waitForSDK()
+        // 4. 动态加载 SDK 脚本
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script')
+          script.src = 'https://static.meiqia.com/dist/meiqia.js'
+          script.async = true
+          script.onload = () => resolve()
+          script.onerror = () => reject(new Error('Failed to load Meiqia SDK script'))
+          document.head.appendChild(script)
+        })
         if (cancelled) return
 
-        _MEIQIA('init', { appKey: res.data.appKey })
-        _MEIQIA('showPanel')
+        w._MEIQIA('showPanel')
         setStatus('ready')
       } catch (err) {
         if (!cancelled) {
