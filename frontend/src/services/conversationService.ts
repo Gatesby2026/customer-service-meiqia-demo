@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Conversation, Message } from '../types/conversation'
+import type { Conversation, Message, PaginatedResponse } from '../types/conversation'
 
 export interface ConversationListParams {
   page?: number
@@ -8,13 +8,6 @@ export interface ConversationListParams {
   end_time?: string
   agent_id?: string
   status?: 'open' | 'closed'
-}
-
-export interface PaginatedResponse<T> {
-  data: T[]
-  total: number
-  page: number
-  page_size: number
 }
 
 export async function fetchConversations(

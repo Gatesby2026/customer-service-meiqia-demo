@@ -1,35 +1,55 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
-
-interface HealthResponse {
-  status: string
-  message: string
-}
+import type { Conversation } from './types/conversation'
+import { useConversationHistory } from './hooks/useConversationHistory'
+import ConversationFilter from './components/admin/ConversationHistory/ConversationFilter'
+import ConversationList from './components/admin/ConversationHistory/ConversationList'
+import ConversationDetail from './components/admin/ConversationHistory/ConversationDetail'
 
 export default function App() {
-  const [backendStatus, setBackendStatus] = useState<string>('检查中...')
-  const [error, setError] = useState<string | null>(null)
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
+  const { conversations, loading, hasMore, filters, loadMore, applyFilters } = useConversationHistory()
 
+  // 默认加载最近 7 天已结束会话
   useEffect(() => {
-    axios
-      .get<HealthResponse>('/api/health')
-      .then((res) => setBackendStatus(res.data.message))
-      .catch(() => setError('无法连接到后端服务，请确认后端已启动'))
-  }, [])
+    const end = new Date()
+    const start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    void applyFilters({
+      status: 'closed',
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-md p-10 max-w-md w-full text-center space-y-4">
-        <h1 className="text-2xl font-semibold text-gray-800">美洽客服系统</h1>
-        <p className="text-gray-500 text-sm">Meiqia Customer Service Demo</p>
-        <div className="mt-6 p-4 rounded-lg bg-gray-100 text-sm">
-          <span className="font-medium text-gray-600">后端状态：</span>
-          {error ? (
-            <span className="text-red-500">{error}</span>
-          ) : (
-            <span className="text-green-600">{backendStatus}</span>
-          )}
-        </div>
+    <div className="flex flex-col h-screen bg-gray-100">
+      {/* 顶部导航 */}
+      <header className="bg-white border-b px-6 py-3 shrink-0 flex items-center gap-3">
+        <h1 className="font-semibold text-gray-800">美洽客服系统</h1>
+        <span className="text-gray-300">|</span>
+        <span className="text-sm text-gray-500">历史对话</span>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* 左侧：筛选 + 列表 */}
+        <aside className="w-80 flex flex-col bg-white border-r shrink-0">
+          <ConversationFilter onFilter={applyFilters} />
+          <ConversationList
+            conversations={conversations}
+            selectedId={selectedConversation?.id ?? null}
+            loading={loading}
+            hasMore={hasMore}
+            onSelect={(conv) => setSelectedConversation(conv)}
+            onLoadMore={loadMore}
+          />
+        </aside>
+
+        {/* 右侧：消息详情 */}
+        <main className="flex-1 overflow-hidden">
+          <ConversationDetail
+            conversation={selectedConversation}
+            key={selectedConversation?.id}
+          />
+        </main>
       </div>
     </div>
   )
