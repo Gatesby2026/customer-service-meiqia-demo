@@ -20,7 +20,7 @@ export default function AdminPage() {
   const agentEmail = sessionStorage.getItem('agentEmail') ?? ''
   const [tab, setTab] = useState<Tab>('workspace')
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
-  const [ssoUrl, setSsoUrl] = useState<string | null>(null)
+  const [iframeSrc, setIframeSrc] = useState<string | null>(null)
   const { conversations, loading, hasMore, loadMore, applyFilters } = useConversationHistory()
 
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
@@ -30,12 +30,13 @@ export default function AdminPage() {
     end_time: toLocalDT(new Date()),
   })
 
+  // 首次进入工作台时用 SSO URL 自动登录，之后切换标签不重载 iframe
   useEffect(() => {
-    if (tab !== 'workspace' || !agentEmail) return
+    if (tab !== 'workspace' || !agentEmail || iframeSrc !== null) return
     axios.post<{ loginUrl: string }>('/api/meiqia/sso-url', { email: agentEmail })
-      .then((res) => setSsoUrl(res.data.loginUrl))
-      .catch(() => {})
-  }, [tab, agentEmail]) // eslint-disable-line react-hooks/exhaustive-deps
+      .then((res) => setIframeSrc(res.data.loginUrl))
+      .catch(() => setIframeSrc('https://app.meiqia.com'))
+  }, [tab, agentEmail, iframeSrc]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (tab !== 'history') return
@@ -81,18 +82,16 @@ export default function AdminPage() {
       </header>
 
       {/* 坐席工作台 */}
-      <div className={`flex-1 overflow-hidden flex flex-col ${tab === 'workspace' ? 'flex' : 'hidden'}`}>
-        {ssoUrl && (
-          <div className="shrink-0 bg-blue-50 border-b border-blue-100 px-4 py-1.5 text-xs text-blue-600 flex items-center gap-2">
-            Session 过期时可
-            <a href={ssoUrl} target="_blank" rel="noopener noreferrer" className="font-medium underline">点此 SSO 重新登录</a>
-          </div>
+      <div className={`flex-1 overflow-hidden ${tab === 'workspace' ? 'block' : 'hidden'}`}>
+        {iframeSrc ? (
+          <iframe
+            src={iframeSrc}
+            className="w-full h-full border-0"
+            title="美洽坐席工作台"
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full text-gray-400 text-sm">加载中...</div>
         )}
-        <iframe
-          src="https://app.meiqia.com"
-          className="flex-1 border-0 w-full"
-          title="美洽坐席工作台"
-        />
       </div>
 
       {/* 历史对话 */}
