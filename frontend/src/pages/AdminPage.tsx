@@ -2,12 +2,18 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import type { Conversation } from '../types/conversation'
+import type { ConversationListParams } from '../services/conversationService'
 import { useConversationHistory } from '../hooks/useConversationHistory'
 import ConversationFilter from '../components/admin/ConversationHistory/ConversationFilter'
 import ConversationList from '../components/admin/ConversationHistory/ConversationList'
 import ConversationDetail from '../components/admin/ConversationHistory/ConversationDetail'
 
 type Tab = 'history' | 'workspace'
+
+function toLocalDT(d: Date) {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
 
 export default function AdminPage() {
   const navigate = useNavigate()
@@ -18,6 +24,12 @@ export default function AdminPage() {
   const [ssoError, setSsoError] = useState(false)
   const { conversations, loading, hasMore, loadMore, applyFilters } = useConversationHistory()
 
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+  const [defaultFilters] = useState<ConversationListParams>({
+    status: 'closed',
+    start_time: toLocalDT(todayStart),
+    end_time: toLocalDT(new Date()),
+  })
   // Fetch SSO URL on mount (workspace tab)
   useEffect(() => {
     if (!agentEmail) return
@@ -28,19 +40,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (tab !== 'history') return
-    // 用本地时间（北京时间），格式 "YYYY-MM-DDTHH:mm:ss"，直接传给后端不做时区转换
-    function toLocalDT(d: Date) {
-      const p = (n: number) => String(n).padStart(2, '0')
-      return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
-    }
-    const end = new Date()
-    const start = new Date()
-    start.setHours(0, 0, 0, 0)
-    void applyFilters({
-      status: 'closed',
-      start_time: toLocalDT(start),
-      end_time: toLocalDT(end),
-    })
+    void applyFilters(defaultFilters)
   }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleLogout() {
@@ -104,7 +104,7 @@ export default function AdminPage() {
       {/* 历史对话 */}
       <div className={`flex flex-1 overflow-hidden ${tab === 'history' ? 'flex' : 'hidden'}`}>
         <aside className="w-80 flex flex-col bg-white border-r shrink-0">
-          <ConversationFilter onFilter={applyFilters} />
+          <ConversationFilter initialValues={defaultFilters} onFilter={applyFilters} />
           <ConversationList
             conversations={conversations}
             selectedId={selectedConversation?.id ?? null}
