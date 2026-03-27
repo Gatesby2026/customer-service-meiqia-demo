@@ -36,7 +36,6 @@ export function useMeiqiaSDK() {
         })
         if (cancelled) return
 
-        w._MEIQIA('showPanel')
         setStatus('ready')
       } catch (err) {
         if (!cancelled) {
