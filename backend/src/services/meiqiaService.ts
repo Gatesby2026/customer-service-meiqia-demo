@@ -62,3 +62,22 @@ export async function getConversationMessages(
 export function getAppKey(): string {
   return config.MEIQIA_APP_KEY
 }
+
+/** 获取坐席 SSO 登录 URL */
+export async function getAgentSSOUrl(agentEmail: string): Promise<string> {
+  const res = await fetch(`${config.MEIQIA_API_HOST}/unified-api/session/v1/sso/login-urls`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.MEIQIA_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ agent_email: agentEmail }),
+  })
+
+  if (!res.ok) {
+    throw new Error(`Meiqia SSO error ${res.status}`)
+  }
+
+  const data = await res.json() as { login_url: string }
+  return data.login_url
+}
