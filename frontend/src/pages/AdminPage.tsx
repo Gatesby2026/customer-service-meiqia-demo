@@ -20,8 +20,7 @@ export default function AdminPage() {
   const agentEmail = sessionStorage.getItem('agentEmail') ?? ''
   const [tab, setTab] = useState<Tab>('workspace')
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
-  const [workspaceUrl, setWorkspaceUrl] = useState<string | null>(null)
-  const [ssoError, setSsoError] = useState(false)
+  const [ssoUrl, setSsoUrl] = useState<string | null>(null)
   const { conversations, loading, hasMore, loadMore, applyFilters } = useConversationHistory()
 
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
@@ -30,14 +29,12 @@ export default function AdminPage() {
     start_time: toLocalDT(todayStart),
     end_time: toLocalDT(new Date()),
   })
-  // 每次切换到工作台时重新获取 SSO URL（临时链接，有效期短）
+  // 切换到工作台时预取 SSO URL，供手动触发登录使用
   useEffect(() => {
     if (tab !== 'workspace' || !agentEmail) return
-    setWorkspaceUrl(null)
-    setSsoError(false)
     axios.post<{ loginUrl: string }>('/api/meiqia/sso-url', { email: agentEmail })
-      .then((res) => setWorkspaceUrl(res.data.loginUrl))
-      .catch(() => setSsoError(true))
+      .then((res) => setSsoUrl(res.data.loginUrl))
+      .catch(() => setSsoUrl(null))
   }, [tab, agentEmail])
 
   useEffect(() => {
@@ -84,24 +81,28 @@ export default function AdminPage() {
       </header>
 
       {/* 坐席工作台 */}
-      <div className={`flex-1 overflow-hidden ${tab === 'workspace' ? 'block' : 'hidden'}`}>
-        {ssoError ? (
-          <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-            工作台加载失败，请
-            <button onClick={handleLogout} className="text-blue-500 ml-1">重新登录</button>
-          </div>
-        ) : workspaceUrl ? (
-          <iframe
-            src={workspaceUrl}
-            className="w-full h-full border-0"
-            title="美洽坐席工作台"
-            allow="storage-access; camera; microphone; clipboard-write"
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-            加载中...
+      <div className={`flex-1 overflow-hidden flex flex-col ${tab === 'workspace' ? 'flex' : 'hidden'}`}>
+        {/* SSO 快速登录提示栏 */}
+        {ssoUrl && (
+          <div className="shrink-0 bg-blue-50 border-b border-blue-100 px-4 py-2 flex items-center gap-3 text-sm">
+            <span className="text-blue-700">首次使用或 session 过期？</span>
+            <a
+              href={ssoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 font-medium hover:underline"
+            >
+              点此 SSO 登录
+            </a>
+            <span className="text-blue-400">（登录后刷新页面即可）</span>
           </div>
         )}
+        <iframe
+          src="https://app.meiqia.com"
+          className="flex-1 border-0 w-full"
+          title="美洽坐席工作台"
+          allow="storage-access; camera; microphone; clipboard-write"
+        />
       </div>
 
       {/* 历史对话 */}
