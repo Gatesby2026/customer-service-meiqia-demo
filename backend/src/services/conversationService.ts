@@ -1,6 +1,7 @@
 import type { Conversation, Message, MessageType, PaginatedResponse } from '../../../shared/types/conversation.js'
 import type { MeiqiaConversation, MeiqiaMessage } from '../../../shared/types/meiqia.js'
 import * as meiqiaService from './meiqiaService.js'
+import { db } from '../db.js'
 
 function mapConversation(raw: MeiqiaConversation): Conversation {
   const msgCount = (Number(raw.conv_agent_msg_count) || 0) + (Number(raw.conv_visitor_msg_count) || 0)
@@ -33,6 +34,39 @@ function mapMessage(raw: MeiqiaMessage, conversationId: string, index: number): 
     content: raw.content,
     senderRole,
     sentAt: raw.timestamp,
+  }
+}
+
+// ── 本地 DB 行类型 ──────────────────────────────────────────────────────────
+interface DbConversation {
+  id: string; status: string; started_at: string; ended_at: string | null
+  agent_name: string; customer_name: string; platform: string; message_count: number
+}
+interface DbMessage {
+  id: string; conversation_id: string; type: string; content: string
+  sender_role: string; sent_at: string
+}
+
+function dbConvToConversation(row: DbConversation): Conversation {
+  return {
+    id: row.id,
+    status: row.status as 'open' | 'closed',
+    startedAt: row.started_at,
+    endedAt: row.ended_at,
+    agentName: row.agent_name,
+    customerName: row.customer_name,
+    messageCount: row.message_count,
+  }
+}
+
+function dbMsgToMessage(row: DbMessage): Message {
+  return {
+    id: row.id,
+    conversationId: row.conversation_id,
+    type: row.type as MessageType,
+    content: row.content,
+    senderRole: row.sender_role as 'customer' | 'agent' | 'system',
+    sentAt: row.sent_at,
   }
 }
 
@@ -76,15 +110,20 @@ export async function getConversationMessages(
   page: number,
   pageSize: number,
 ): Promise<PaginatedResponse<Message>> {
+  // 优先从本地库查（webhook 同步后可用，速度快且不受 API 限流影响）
+  const localRows = db.prepare('SELECT * FROM messages WHERE conversation_id = ? ORDER BY sent_at')
+    .all(id) as DbMessage[]
+
+  if (localRows.length > 0) {
+    const start = (page - 1) * pageSize
+    const data = localRows.slice(start, start + pageSize).map(dbMsgToMessage)
+    return { data, page, pageSize, total: localRows.length, hasMore: start + pageSize < localRows.length }
+  }
+
+  // 本地无数据，fallback 到美洽 API
   const raw = await meiqiaService.getConversation(id)
   const allMessages = (raw.conv_content ?? []).map((m, i) => mapMessage(m, id, i))
   const start = (page - 1) * pageSize
   const data = allMessages.slice(start, start + pageSize)
-  return {
-    data,
-    page,
-    pageSize,
-    total: allMessages.length,
-    hasMore: start + pageSize < allMessages.length,
-  }
+  return { data, page, pageSize, total: allMessages.length, hasMore: start + pageSize < allMessages.length }
 }
