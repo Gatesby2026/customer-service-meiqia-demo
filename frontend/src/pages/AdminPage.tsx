@@ -29,7 +29,8 @@ export default function AdminPage() {
   useEffect(() => {
     if (tab !== 'history') return
     const end = new Date()
-    const start = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
     void applyFilters({
       status: 'closed',
       start_time: start.toISOString(),
