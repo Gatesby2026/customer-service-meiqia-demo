@@ -38,7 +38,8 @@ export async function listConversations(
 }
 
 export async function getConversation(id: string): Promise<MeiqiaConversation> {
-  return meiqiaGet<MeiqiaConversation>(`/conversations/${id}`)
+  const raw = await meiqiaGet<{ result: MeiqiaConversation }>(`/conversations/${id}`, { conv_id: id })
+  return raw.result
 }
 
 /** 返回 App Key，供前端 SDK 初始化使用 */
