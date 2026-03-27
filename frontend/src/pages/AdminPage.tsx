@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import type { Conversation } from '../types/conversation'
@@ -21,8 +21,6 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('workspace')
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
   const [ssoUrl, setSsoUrl] = useState<string | null>(null)
-  const [winOpen, setWinOpen] = useState(false)
-  const winRef = useRef<Window | null>(null)
   const { conversations, loading, hasMore, loadMore, applyFilters } = useConversationHistory()
 
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
@@ -32,29 +30,12 @@ export default function AdminPage() {
     end_time: toLocalDT(new Date()),
   })
 
-  // 切换到工作台时：若窗口还开着直接聚焦，否则重新获取 SSO URL 打开新窗口
   useEffect(() => {
     if (tab !== 'workspace' || !agentEmail) return
-    if (winRef.current && !winRef.current.closed) {
-      winRef.current.focus()
-      return
-    }
     axios.post<{ loginUrl: string }>('/api/meiqia/sso-url', { email: agentEmail })
-      .then((res) => {
-        setSsoUrl(res.data.loginUrl)
-        launchWindow(res.data.loginUrl)
-      })
-      .catch(() => setSsoUrl(null))
+      .then((res) => setSsoUrl(res.data.loginUrl))
+      .catch(() => {})
   }, [tab, agentEmail]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function launchWindow(url: string) {
-    const w = 1280, h = 800
-    const left = Math.max(0, (screen.width - w) / 2)
-    const top = Math.max(0, (screen.height - h) / 2)
-    const win = window.open(url, 'meiqia-workspace', `width=${w},height=${h},left=${left},top=${top},resizable=yes`)
-    winRef.current = win
-    setWinOpen(win !== null && !win.closed)
-  }
 
   useEffect(() => {
     if (tab !== 'history') return
@@ -100,25 +81,18 @@ export default function AdminPage() {
       </header>
 
       {/* 坐席工作台 */}
-      <div className={`flex-1 overflow-hidden flex flex-col items-center justify-center bg-gray-50 ${tab === 'workspace' ? 'flex' : 'hidden'}`}>
-        <div className="text-center">
-          <div className="text-4xl mb-4">💬</div>
-          <p className="text-gray-600 text-sm mb-1">坐席工作台已在独立窗口打开</p>
-          <p className="text-gray-400 text-xs mb-6">如被浏览器拦截或窗口已关闭，请点击下方按钮重新打开</p>
-          {ssoUrl ? (
-            <button
-              onClick={() => launchWindow(ssoUrl)}
-              className="bg-blue-500 text-white px-5 py-2 rounded text-sm hover:bg-blue-600"
-            >
-              重新打开坐席工作台
-            </button>
-          ) : (
-            <span className="text-gray-400 text-sm">加载中...</span>
-          )}
-          {winOpen && (
-            <p className="mt-3 text-green-600 text-xs">工作台窗口已打开 ✓</p>
-          )}
-        </div>
+      <div className={`flex-1 overflow-hidden flex flex-col ${tab === 'workspace' ? 'flex' : 'hidden'}`}>
+        {ssoUrl && (
+          <div className="shrink-0 bg-blue-50 border-b border-blue-100 px-4 py-1.5 text-xs text-blue-600 flex items-center gap-2">
+            Session 过期时可
+            <a href={ssoUrl} target="_blank" rel="noopener noreferrer" className="font-medium underline">点此 SSO 重新登录</a>
+          </div>
+        )}
+        <iframe
+          src="https://app.meiqia.com"
+          className="flex-1 border-0 w-full"
+          title="美洽坐席工作台"
+        />
       </div>
 
       {/* 历史对话 */}
