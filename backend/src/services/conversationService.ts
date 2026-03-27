@@ -10,7 +10,7 @@ function mapConversation(raw: MeiqiaConversation): Conversation {
     startedAt: raw.conv_start_tm,
     endedAt: raw.conv_end_tm ?? null,
     agentName: raw.agent_nick_name || raw.agent_name,
-    customerName: raw.platform || '顾客',
+    customerName: raw.client_info?.name || raw.client_info?.visitor_name || '顾客',
     messageCount: msgCount,
   }
 }

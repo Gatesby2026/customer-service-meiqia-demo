@@ -8,11 +8,16 @@ export interface MeiqiaConversation {
   agent_nick_name: string
   agent_account: string
   conv_content: MeiqiaMessage[]
-  conv_agent_msg_count: string
-  conv_visitor_msg_count: string
+  conv_agent_msg_count: string | number
+  conv_visitor_msg_count: string | number
   platform: string
   main_channel: string
   sub_channel: string
+  client_info: {
+    visitor_name: string
+    name: string
+    [key: string]: unknown
+  }
 }
 
 /** 美洽消息（嵌套在 conv_content 中） */
