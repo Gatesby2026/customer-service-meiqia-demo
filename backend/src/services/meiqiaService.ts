@@ -24,21 +24,22 @@ export interface ListConversationsParams {
   end_time?: number    // Unix 秒
 }
 
+/** 将 ISO 8601 时间转换为美洽 API 要求的格式：YYYY-MM-DD HH:mm:ss */
+function toMeiqiaTm(iso: string): string {
+  return new Date(iso).toISOString().replace('T', ' ').slice(0, 19)
+}
+
 export async function listConversations(
   params: ListConversationsParams
 ): Promise<MeiqiaConversation[]> {
   const limit = Math.min(params.page_size ?? 20, 20)
   const offset = ((params.page ?? 1) - 1) * limit
   const query: Record<string, string | number> = { offset, limit }
-  if (params.start_time) query['conv_start_from_tm'] = params.start_time
-  if (params.end_time) query['conv_start_to_tm'] = params.end_time
+  if (params.start_time) query['conv_start_from_tm'] = toMeiqiaTm(new Date(params.start_time * 1000).toISOString())
+  if (params.end_time) query['conv_start_to_tm'] = toMeiqiaTm(new Date(params.end_time * 1000).toISOString())
 
-  // API 可能返回数组或 { conversations: [...] }，兼容两种格式
-  const raw = await meiqiaGet<MeiqiaConversation[] | { conversations: MeiqiaConversation[] }>(
-    '/conversations',
-    query,
-  )
-  return Array.isArray(raw) ? raw : (raw.conversations ?? [])
+  const raw = await meiqiaGet<{ result: MeiqiaConversation[] }>('/conversations', query)
+  return raw.result ?? []
 }
 
 export async function getConversation(id: string): Promise<MeiqiaConversation> {

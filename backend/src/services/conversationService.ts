@@ -15,10 +15,10 @@ function mapConversation(raw: MeiqiaConversation): Conversation {
   }
 }
 
-function mapMessageType(actionType: string): MessageType {
-  if (actionType === 'image') return 'image'
-  if (actionType === 'file') return 'file'
-  if (actionType === 'system') return 'system_event'
+function mapMessageType(contentType: string): MessageType {
+  if (contentType === 'image') return 'image'
+  if (contentType === 'file') return 'file'
+  if (contentType === 'system') return 'system_event'
   return 'text'
 }
 
@@ -29,7 +29,7 @@ function mapMessage(raw: MeiqiaMessage, conversationId: string, index: number): 
   return {
     id: `${conversationId}-${index}`,
     conversationId,
-    type: mapMessageType(raw.action_type),
+    type: mapMessageType(raw.content_type),
     content: raw.content,
     senderRole,
     sentAt: raw.timestamp,

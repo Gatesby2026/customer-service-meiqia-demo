@@ -17,10 +17,12 @@ export interface MeiqiaConversation {
 
 /** 美洽消息（嵌套在 conv_content 中） */
 export interface MeiqiaMessage {
-  from: string        // 'client' | 'agent' | 'system' 等
-  timestamp: string   // 时间字符串
+  from: string         // 'client' | 'agent' | 'system'
+  timestamp: string    // "YYYY-MM-DD HH:mm:ss.ffffff"
   content: string
-  action_type: string // 消息类型
+  content_type: string // 'text' | 'image' | 'file' | ...
+  type: string
+  agent_name: string | null
 }
 
 /** 美洽 Webhook 事件 */
