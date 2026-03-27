@@ -3,68 +3,65 @@ import type { MeiqiaConversation, MeiqiaMessage } from '../../../shared/types/me
 import * as meiqiaService from './meiqiaService.js'
 
 function mapConversation(raw: MeiqiaConversation): Conversation {
+  const msgCount = (Number(raw.conv_agent_msg_count) || 0) + (Number(raw.conv_visitor_msg_count) || 0)
   return {
-    id: raw.id,
-    status: raw.status,
-    startedAt: new Date(raw.created_at * 1000).toISOString(),
-    endedAt: raw.ended_at ? new Date(raw.ended_at * 1000).toISOString() : null,
-    agentName: raw.agent_name,
-    customerName: raw.client_name,
-    messageCount: raw.message_count,
+    id: String(raw.conv_id),
+    status: raw.conv_end_tm ? 'closed' : 'open',
+    startedAt: raw.conv_start_tm,
+    endedAt: raw.conv_end_tm ?? null,
+    agentName: raw.agent_nick_name || raw.agent_name,
+    customerName: raw.platform || '顾客',
+    messageCount: msgCount,
   }
 }
 
-function mapMessageType(contentType: string): MessageType {
-  switch (contentType) {
-    case 'text':
-      return 'text'
-    case 'image':
-      return 'image'
-    case 'file':
-      return 'file'
-    default:
-      return 'system_event'
-  }
+function mapMessageType(actionType: string): MessageType {
+  if (actionType === 'image') return 'image'
+  if (actionType === 'file') return 'file'
+  if (actionType === 'system') return 'system_event'
+  return 'text'
 }
 
-function mapMessage(raw: MeiqiaMessage): Message {
+function mapMessage(raw: MeiqiaMessage, conversationId: string, index: number): Message {
+  const senderRole = raw.from === 'client' ? 'customer'
+    : raw.from === 'agent' ? 'agent'
+    : 'system'
   return {
-    id: raw.id,
-    conversationId: raw.conversation_id,
-    type: mapMessageType(raw.content_type),
+    id: `${conversationId}-${index}`,
+    conversationId,
+    type: mapMessageType(raw.action_type),
     content: raw.content,
-    senderRole: raw.sender_type === 'client' ? 'customer' : raw.sender_type,
-    sentAt: new Date(raw.created_at * 1000).toISOString(),
+    senderRole,
+    sentAt: raw.timestamp,
   }
 }
 
 export interface ListConversationsQuery {
   page: number
   pageSize: number
-  startTime?: string // ISO 8601，由路由层传入
+  startTime?: string  // ISO 8601
   endTime?: string
   agentId?: string
   status?: 'open' | 'closed'
 }
 
 export async function listConversations(query: ListConversationsQuery): Promise<PaginatedResponse<Conversation>> {
-  const result = await meiqiaService.listConversations({
+  const conversations = await meiqiaService.listConversations({
     page: query.page,
     page_size: query.pageSize,
     start_time: query.startTime ? Math.floor(new Date(query.startTime).getTime() / 1000) : undefined,
     end_time: query.endTime ? Math.floor(new Date(query.endTime).getTime() / 1000) : undefined,
-    agent_id: query.agentId,
-    status: query.status,
   })
 
-  const data = result.conversations.map(mapConversation)
-  return {
-    data,
-    page: query.page,
-    pageSize: query.pageSize,
-    total: result.total,
-    hasMore: query.page * query.pageSize < result.total,
+  let data = conversations.map(mapConversation)
+
+  // 客户端过滤 status（API 不支持该参数）
+  if (query.status) {
+    data = data.filter((c) => c.status === query.status)
   }
+
+  const hasMore = data.length >= query.pageSize
+  return { data, page: query.page, pageSize: query.pageSize, total: data.length, hasMore }
 }
 
 export async function getConversation(id: string): Promise<Conversation> {
@@ -77,13 +74,15 @@ export async function getConversationMessages(
   page: number,
   pageSize: number,
 ): Promise<PaginatedResponse<Message>> {
-  const result = await meiqiaService.getConversationMessages(id, { page, page_size: pageSize })
-  const data = result.messages.map(mapMessage)
+  const raw = await meiqiaService.getConversation(id)
+  const allMessages = (raw.conv_content ?? []).map((m, i) => mapMessage(m, id, i))
+  const start = (page - 1) * pageSize
+  const data = allMessages.slice(start, start + pageSize)
   return {
     data,
     page,
     pageSize,
-    total: result.total,
-    hasMore: page * pageSize < result.total,
+    total: allMessages.length,
+    hasMore: start + pageSize < allMessages.length,
   }
 }
