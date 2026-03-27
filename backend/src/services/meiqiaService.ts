@@ -78,6 +78,6 @@ export async function getAgentSSOUrl(agentEmail: string): Promise<string> {
     throw new Error(`Meiqia SSO error ${res.status}`)
   }
 
-  const data = await res.json() as { login_url: string }
-  return data.login_url
+  const data = await res.json() as { url: string }
+  return data.url
 }
