@@ -22,13 +22,13 @@ export function useMeiqiaSDK() {
         const res = await axios.get<{ appKey: string; enterpriseId: string }>('/api/meiqia/app-key')
         if (cancelled) return
 
-        // 3. 设置 appid（企业ID，SDK 加载后自动执行）
-        w._MEIQIA('appid', res.data.enterpriseId)
+        // 3. 设置 entId（企业ID，SDK 加载后自动执行）
+        w._MEIQIA('entId', res.data.enterpriseId)
 
         // 4. 动态加载 SDK 脚本
         await new Promise<void>((resolve, reject) => {
           const script = document.createElement('script')
-          script.src = 'https://static.meiqia.com/dist/meiqia.js'
+          script.src = 'https://static.meiqia.com/widget/loader.js'
           script.async = true
           script.onload = () => resolve()
           script.onerror = () => reject(new Error('Failed to load Meiqia SDK script'))
