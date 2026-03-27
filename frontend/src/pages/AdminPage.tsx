@@ -28,13 +28,18 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (tab !== 'history') return
+    // 用本地时间（北京时间），格式 "YYYY-MM-DDTHH:mm:ss"，直接传给后端不做时区转换
+    function toLocalDT(d: Date) {
+      const p = (n: number) => String(n).padStart(2, '0')
+      return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+    }
     const end = new Date()
     const start = new Date()
     start.setHours(0, 0, 0, 0)
     void applyFilters({
       status: 'closed',
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
+      start_time: toLocalDT(start),
+      end_time: toLocalDT(end),
     })
   }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
 

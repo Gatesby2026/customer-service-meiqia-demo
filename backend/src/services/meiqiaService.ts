@@ -20,14 +20,8 @@ async function meiqiaGet<T>(path: string, params: Record<string, string | number
 export interface ListConversationsParams {
   page?: number
   page_size?: number
-  start_time?: number  // Unix 秒
-  end_time?: number    // Unix 秒
-}
-
-/** 将 Unix 秒转换为美洽 API 要求的北京时间格式：YYYY-MM-DD HH:mm:ss */
-function toBeijingTm(unixSeconds: number): string {
-  // 美洽 API 使用北京时间（UTC+8），需在 UTC 基础上加 8 小时
-  return new Date((unixSeconds + 8 * 3600) * 1000).toISOString().replace('T', ' ').slice(0, 19)
+  start_time?: string  // 北京时间字符串 "YYYY-MM-DD HH:mm:ss"
+  end_time?: string
 }
 
 export async function listConversations(
@@ -36,8 +30,8 @@ export async function listConversations(
   const limit = Math.min(params.page_size ?? 20, 20)
   const offset = ((params.page ?? 1) - 1) * limit
   const query: Record<string, string | number> = { offset, limit }
-  if (params.start_time) query['conv_start_from_tm'] = toBeijingTm(params.start_time)
-  if (params.end_time) query['conv_start_to_tm'] = toBeijingTm(params.end_time)
+  if (params.start_time) query['conv_start_from_tm'] = params.start_time
+  if (params.end_time) query['conv_start_to_tm'] = params.end_time
 
   const raw = await meiqiaGet<{ result: MeiqiaConversation[] }>('/conversations', query)
   return raw.result ?? []

@@ -46,11 +46,13 @@ export interface ListConversationsQuery {
 }
 
 export async function listConversations(query: ListConversationsQuery): Promise<PaginatedResponse<Conversation>> {
+  // 前端传来的是本地时间字符串（北京时间），直接转成美洽要求的 "YYYY-MM-DD HH:mm:ss" 格式
+  function toMeiqiaTm(s: string) { return s.replace('T', ' ').slice(0, 19) }
   const conversations = await meiqiaService.listConversations({
     page: query.page,
     page_size: query.pageSize,
-    start_time: query.startTime ? Math.floor(new Date(query.startTime).getTime() / 1000) : undefined,
-    end_time: query.endTime ? Math.floor(new Date(query.endTime).getTime() / 1000) : undefined,
+    start_time: query.startTime ? toMeiqiaTm(query.startTime) : undefined,
+    end_time: query.endTime ? toMeiqiaTm(query.endTime) : undefined,
   })
 
   let data = conversations.map(mapConversation)
