@@ -84,22 +84,26 @@ export default function AdminPage() {
       </header>
 
       {/* 坐席工作台 */}
-      <div className={`flex-1 overflow-hidden ${tab === 'workspace' ? 'block' : 'hidden'}`}>
+      <div className={`flex-1 overflow-hidden ${tab === 'workspace' ? 'flex' : 'hidden'} items-center justify-center bg-gray-50`}>
         {ssoError ? (
-          <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-            工作台加载失败，请
-            <button onClick={handleLogout} className="text-blue-500 ml-1">重新登录</button>
+          <div className="text-center text-gray-500 text-sm">
+            <p className="mb-3">工作台加载失败，请</p>
+            <button onClick={handleLogout} className="text-blue-500">重新登录</button>
           </div>
         ) : workspaceUrl ? (
-          <iframe
-            src={workspaceUrl}
-            className="w-full h-full border-0"
-            title="美洽坐席工作台"
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-            加载中...
+          <div className="text-center">
+            <p className="text-gray-500 text-sm mb-4">点击下方按钮在新窗口打开坐席工作台</p>
+            <a
+              href={workspaceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-blue-500 text-white px-6 py-2.5 rounded hover:bg-blue-600 text-sm font-medium"
+            >
+              打开坐席工作台
+            </a>
           </div>
+        ) : (
+          <div className="text-gray-400 text-sm">加载中...</div>
         )}
       </div>
 
