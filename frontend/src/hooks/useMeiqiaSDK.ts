@@ -29,18 +29,13 @@ export function useMeiqiaSDK({ openid }: Options = {}) {
         // 3. 设置 entId
         w._MEIQIA('entId', res.data.enterpriseId)
 
-        // 4. 如果有微信 openID，传递顾客信息并同步身份
+        // 4. 如果有微信 openID，设置为自定义用户信息
         if (openid) {
-          w._MEIQIA('clientId', openid)
-          w._MEIQIA('metadata', { wechat_openid: openid, name: openid })
+          w._MEIQIA('setMetaData', { wechat_openid: openid })
+          w._MEIQIA('identifyVisitor', { name: openid })
         }
 
-        // 5. 初始化完成后自动打开对话面板（必须在 allSet 回调内调用 showPanel）
-        w._MEIQIA('allSet', () => {
-          w._MEIQIA!('showPanel')
-        })
-
-        // 6. 动态加载 SDK 脚本
+        // 5. 动态加载 SDK 脚本
         await new Promise<void>((resolve, reject) => {
           const script = document.createElement('script')
           script.src = 'https://static.meiqia.com/widget/loader.js'
@@ -49,6 +44,10 @@ export function useMeiqiaSDK({ openid }: Options = {}) {
           script.onerror = () => reject(new Error('Failed to load Meiqia SDK script'))
           document.head.appendChild(script)
         })
+        if (cancelled) return
+
+        // 6. 自动打开对话面板
+        w._MEIQIA('showPanel')
 
         setStatus('ready')
       } catch (err) {
