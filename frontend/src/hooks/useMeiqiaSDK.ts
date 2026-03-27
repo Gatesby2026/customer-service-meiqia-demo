@@ -26,8 +26,8 @@ export function useMeiqiaSDK({ openid }: Options = {}) {
         const res = await axios.get<{ appKey: string; enterpriseId: string }>('/api/meiqia/app-key')
         if (cancelled) return
 
-        // 3. 设置 entId
-        w._MEIQIA('entId', res.data.enterpriseId)
+        // 3. 设置 entId（SDK 使用 appKey，不是数字型 enterpriseId）
+        w._MEIQIA('entId', res.data.appKey)
 
         // 4. 如果有微信 openID，设置为自定义用户信息
         if (openid) {
