@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import type { Conversation } from '../types/conversation'
@@ -21,7 +21,8 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('workspace')
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
   const [ssoUrl, setSsoUrl] = useState<string | null>(null)
-  const [workspaceWin, setWorkspaceWin] = useState<Window | null>(null)
+  const [winOpen, setWinOpen] = useState(false)
+  const winRef = useRef<Window | null>(null)
   const { conversations, loading, hasMore, loadMore, applyFilters } = useConversationHistory()
 
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
@@ -31,24 +32,28 @@ export default function AdminPage() {
     end_time: toLocalDT(new Date()),
   })
 
-  // 切换到工作台时获取 SSO URL 并自动弹出工作台窗口
+  // 切换到工作台时：若窗口还开着直接聚焦，否则重新获取 SSO URL 打开新窗口
   useEffect(() => {
     if (tab !== 'workspace' || !agentEmail) return
+    if (winRef.current && !winRef.current.closed) {
+      winRef.current.focus()
+      return
+    }
     axios.post<{ loginUrl: string }>('/api/meiqia/sso-url', { email: agentEmail })
       .then((res) => {
         setSsoUrl(res.data.loginUrl)
-        openWorkspace(res.data.loginUrl)
+        launchWindow(res.data.loginUrl)
       })
       .catch(() => setSsoUrl(null))
   }, [tab, agentEmail]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function openWorkspace(url: string) {
-    const w = 1280
-    const h = 800
+  function launchWindow(url: string) {
+    const w = 1280, h = 800
     const left = Math.max(0, (screen.width - w) / 2)
     const top = Math.max(0, (screen.height - h) / 2)
     const win = window.open(url, 'meiqia-workspace', `width=${w},height=${h},left=${left},top=${top},resizable=yes`)
-    setWorkspaceWin(win)
+    winRef.current = win
+    setWinOpen(win !== null && !win.closed)
   }
 
   useEffect(() => {
@@ -102,7 +107,7 @@ export default function AdminPage() {
           <p className="text-gray-400 text-xs mb-6">如被浏览器拦截或窗口已关闭，请点击下方按钮重新打开</p>
           {ssoUrl ? (
             <button
-              onClick={() => openWorkspace(ssoUrl)}
+              onClick={() => launchWindow(ssoUrl)}
               className="bg-blue-500 text-white px-5 py-2 rounded text-sm hover:bg-blue-600"
             >
               重新打开坐席工作台
@@ -110,7 +115,7 @@ export default function AdminPage() {
           ) : (
             <span className="text-gray-400 text-sm">加载中...</span>
           )}
-          {workspaceWin && !workspaceWin.closed && (
+          {winOpen && (
             <p className="mt-3 text-green-600 text-xs">工作台窗口已打开 ✓</p>
           )}
         </div>
