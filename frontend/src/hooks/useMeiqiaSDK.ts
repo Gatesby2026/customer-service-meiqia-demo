@@ -19,11 +19,11 @@ export function useMeiqiaSDK() {
         }
 
         // 2. 从后端获取 App Key
-        const res = await axios.get<{ appKey: string }>('/api/meiqia/app-key')
+        const res = await axios.get<{ appKey: string; enterpriseId: string }>('/api/meiqia/app-key')
         if (cancelled) return
 
-        // 3. 设置 appid（加入队列，SDK 加载后自动执行）
-        w._MEIQIA('appid', res.data.appKey)
+        // 3. 设置 appid（企业ID，SDK 加载后自动执行）
+        w._MEIQIA('appid', res.data.enterpriseId)
 
         // 4. 动态加载 SDK 脚本
         await new Promise<void>((resolve, reject) => {
