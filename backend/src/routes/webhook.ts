@@ -23,12 +23,18 @@ webhookRouter.post('/meiqia', async (c) => {
   }
 
   const event = JSON.parse(rawBody) as MeiqiaWebhookEvent
-  console.log('[Webhook] event:', event.event, JSON.stringify(event.data))
+  console.log('[Webhook] full body:', rawBody)
 
-  if (event.event === 'conv_close') {
-    const convId = String((event.data as { conv_id?: unknown }).conv_id ?? '')
+  if (event.event === 'conversation.closed') {
+    // 尝试从各种可能的位置取 conv_id
+    const payload = event as unknown as Record<string, unknown>
+    const convId = String(
+      (payload.data as Record<string, unknown> | undefined)?.conv_id
+      ?? payload.conv_id
+      ?? ''
+    )
+    console.log('[Webhook] conv_id extracted:', convId)
     if (convId) {
-      // 异步同步，不阻塞 webhook 响应
       syncConversation(convId).catch((err: unknown) => {
         console.error('[Webhook] sync failed for conv', convId, err)
       })
