@@ -83,11 +83,15 @@ export default function AdminPage() {
             <button onClick={handleLogout} className="text-blue-500 ml-1">重新登录</button>
           </div>
         ) : workspaceUrl ? (
-          <iframe
-            src={workspaceUrl}
-            className="w-full h-full border-0"
-            title="美洽坐席工作台"
-          />
+          /* 用 overflow:hidden + 负 margin 裁掉美洽顶部栏（约56px） */
+          <div className="w-full h-full overflow-hidden relative" style={{ height: 'calc(100% + 56px)', marginTop: '-56px' }}>
+            <iframe
+              src={workspaceUrl}
+              className="w-full border-0"
+              style={{ height: 'calc(100% + 56px)', marginTop: '56px' }}
+              title="美洽坐席工作台"
+            />
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full text-gray-400 text-sm">
             加载中...
