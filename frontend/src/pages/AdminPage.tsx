@@ -30,13 +30,15 @@ export default function AdminPage() {
     start_time: toLocalDT(todayStart),
     end_time: toLocalDT(new Date()),
   })
-  // Fetch SSO URL on mount (workspace tab)
+  // 每次切换到工作台时重新获取 SSO URL（临时链接，有效期短）
   useEffect(() => {
-    if (!agentEmail) return
+    if (tab !== 'workspace' || !agentEmail) return
+    setWorkspaceUrl(null)
+    setSsoError(false)
     axios.post<{ loginUrl: string }>('/api/meiqia/sso-url', { email: agentEmail })
       .then((res) => setWorkspaceUrl(res.data.loginUrl))
       .catch(() => setSsoError(true))
-  }, [agentEmail])
+  }, [tab, agentEmail])
 
   useEffect(() => {
     if (tab !== 'history') return
