@@ -3,7 +3,11 @@ import axios from 'axios'
 
 type SDKStatus = 'idle' | 'loading' | 'ready' | 'error'
 
-export function useMeiqiaSDK() {
+interface Options {
+  openid?: string
+}
+
+export function useMeiqiaSDK({ openid }: Options = {}) {
   const [status, setStatus] = useState<SDKStatus>('idle')
 
   useEffect(() => {
@@ -12,32 +16,39 @@ export function useMeiqiaSDK() {
 
     async function init() {
       try {
-        const res = await axios.get<{ token: string }>('/api/meiqia/client-token')
+        // 1. 先创建 _MEIQIA 队列函数（必须在加载 SDK 脚本之前）
+        const w = window as Window & { _MEIQIA?: ((...args: unknown[]) => void) & { a?: unknown[][] } }
+        w._MEIQIA = w._MEIQIA ?? function (...args: unknown[]) {
+          ;(w._MEIQIA!.a = w._MEIQIA!.a ?? []).push(args)
+        }
+
+        // 2. 从后端获取企业 ID
+        const res = await axios.get<{ appKey: string; enterpriseId: string }>('/api/meiqia/app-key')
         if (cancelled) return
 
-        // 等待 SDK 脚本加载完成
-        const waitForSDK = () =>
-          new Promise<void>((resolve, reject) => {
-            const maxWait = 5000
-            const interval = 100
-            let elapsed = 0
-            const timer = setInterval(() => {
-              if (typeof _MEIQIA !== 'undefined') {
-                clearInterval(timer)
-                resolve()
-              } else if (elapsed >= maxWait) {
-                clearInterval(timer)
-                reject(new Error('Meiqia SDK load timeout'))
-              }
-              elapsed += interval
-            }, interval)
-          })
+        // 3. 设置 entId（SDK 使用 appKey，不是数字型 enterpriseId）
+        w._MEIQIA('entId', res.data.appKey)
 
-        await waitForSDK()
+        // 4. 如果有微信 openID，设置为自定义用户信息
+        if (openid) {
+          w._MEIQIA('setMetaData', { wechat_openid: openid })
+          w._MEIQIA('identifyVisitor', { name: openid })
+        }
+
+        // 5. 动态加载 SDK 脚本
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script')
+          script.src = 'https://static.meiqia.com/widget/loader.js'
+          script.async = true
+          script.onload = () => resolve()
+          script.onerror = () => reject(new Error('Failed to load Meiqia SDK script'))
+          document.head.appendChild(script)
+        })
         if (cancelled) return
 
-        _MEIQIA('init', { clientToken: res.data.token })
-        _MEIQIA('showPanel')
+        // 6. 自动打开对话面板
+        w._MEIQIA('showPanel')
+
         setStatus('ready')
       } catch (err) {
         if (!cancelled) {
@@ -49,7 +60,7 @@ export function useMeiqiaSDK() {
 
     void init()
     return () => { cancelled = true }
-  }, [])
+  }, [openid])
 
   return { status }
 }

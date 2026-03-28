@@ -19,3 +19,6 @@ frontend/.vite/
 .vscode/
 .idea/
 *.swp
+*.db
+*.db-wal
+*.db-shm

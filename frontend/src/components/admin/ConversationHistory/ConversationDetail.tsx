@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Conversation } from '../../../types/conversation'
 import { useConversationMessages } from '../../../hooks/useConversationMessages'
 import MessageBubble from './MessageBubble'
@@ -11,10 +11,9 @@ export default function ConversationDetail({ conversation }: Props) {
   const [keyword, setKeyword] = useState('')
   const { messages, loading, load } = useConversationMessages()
 
-  // 当会话切换时加载消息
-  if (conversation && messages.length === 0 && !loading) {
-    void load(conversation.id)
-  }
+  useEffect(() => {
+    if (conversation) void load(conversation.id)
+  }, [conversation?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!conversation) {
     return (

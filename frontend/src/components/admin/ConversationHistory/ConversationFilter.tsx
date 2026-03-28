@@ -2,13 +2,14 @@ import { useState } from 'react'
 import type { ConversationListParams } from '../../../services/conversationService'
 
 interface Props {
+  initialValues?: Pick<ConversationListParams, 'start_time' | 'end_time' | 'status'>
   onFilter: (params: ConversationListParams) => void
 }
 
-export default function ConversationFilter({ onFilter }: Props) {
-  const [startTime, setStartTime] = useState('')
-  const [endTime, setEndTime] = useState('')
-  const [status, setStatus] = useState<'open' | 'closed' | ''>('')
+export default function ConversationFilter({ initialValues, onFilter }: Props) {
+  const [startTime, setStartTime] = useState(initialValues?.start_time?.slice(0, 16) ?? '')
+  const [endTime, setEndTime] = useState(initialValues?.end_time?.slice(0, 16) ?? '')
+  const [status, setStatus] = useState<'open' | 'closed' | ''>(initialValues?.status ?? '')
   const [agentId, setAgentId] = useState('')
 
   function handleSubmit(e: React.FormEvent) {
